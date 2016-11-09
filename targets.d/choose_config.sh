@@ -25,44 +25,16 @@ function gen_config {
     gendate="$(date)"
     cat <<EOF
 """
-Configuration of MeetMe app 
+Configuration of vocabulary game server.
 Generated $( date )
-May be edited to fit target environment
+Edit to fit development or deployment environment.
 
 """
 
 PORT=${port}
 DEBUG = True  # Set to False for production use
-secret_key="${secret}"
-
-EOF
-}
-
-# Generate Makefile.local with the proper reference 
-# to pyvenv, which may vary from target to target
-#
-# 
-function gen_makefile {
-    if test -f `which pyvenv` ; then
-       pyvenv=`which pyvenv`
-     elif test -f `which pyvenv3.5` ; then        
-       pyvenv=`which pyvenv-3.5`
-     elif test -f `which pyvenv3.4` ; then 
-       pyvenv=`which pyvenv-3.4`
-     elif test -f virtualenv ; then  # Windows 10 bash ?
-       pyvenv=`which virtualenv`
-       (>&2 echo "Attempting to point pyvenv to virtualenv as \"${pyvenv}\"")
-       (>&2 echo "You might need to fix pyvenv variable in Makefile.local") 
-     else
-       (>&2 echo "You'll need to fix Makefile.local and then re-run 'make env'")
-       pyvenv="FIXME_PYVENV_PATH"
-    fi;
-    cat <<EOF
-# 
-# Target-specific paths for Makefile
-#
-
-PYVENV = ${pyvenv} 
+secret_key = "${secret}"
+locations = "data/locations.txt"
 
 EOF
 }
@@ -70,26 +42,27 @@ EOF
 if [[ $architecture =~ "arm" ]]; then
    echo "Configuring for Raspberry Pi versions 2 or 3"
    gen_config > ../CONFIG.py
-   gen_makefile > ../Makefile.local
+   cp Makefile.standard ../Makefile.local
 
 elif [[ $opsys =~ "Darwin" ]]; then 
    echo "Configuring for Mac OS X"
    gen_config > ../CONFIG.py
-   gen_makefile > ../Makefile.local
+   cp Makefile.standard ../Makefile.local
 
 elif [[ $node =~ "ix" ]]; then 
    echo "Configuring for shared CIS host ix-trusty or ix-dev"
    (( port = 1000 + ($RANDOM % 8000) ))
-   gen_makefile > ../Makefile.local
    gen_config > ../CONFIG.py
+   cp Makefile.ubuntu ../Makefile.local
    echo "CONFIG.py uses random port ${port}; you may edit for another value"
 
 else
    echo "Unknown host type; using default configuration files"
    echo "Edit CONFIG.py to set appropriate port"
-   echo "Edit Makefile.local as needed"
+   echo "Edit Makefile.in as needed"
    gen_config > ../CONFIG.py
-   gen_makefile > ../Makefile.local
+   cp Makefile.standard ../Makefile.local
+
 fi;
 
 

@@ -7,10 +7,12 @@
 #     Makefile.local is produced by the 'configure' script
 #     client_secrets.py must be placed in the secrets directory
 #
-Makefile.local: 
-	echo "You must run the 'configure' script before using make"
 
-include Makefile.local
+Makefile.local: 
+	bash ./configure
+
+include Makefile.local   
+#Where customizations go 
 
 
 #  Compile web-site assets (things that will be in the 'static' 
