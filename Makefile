@@ -48,6 +48,9 @@ INVENV = . env/bin/activate ;
 #  We'll get by without npm and browserify. 
 # 
 
+quickstart: env
+	($(INVENV) python3 quickstart.py) ||  true
+
 # 'make run' runs Flask's built-in test server, 
 #  with debugging turned on unless it is unset in CONFIG.py
 # 

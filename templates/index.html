@@ -38,9 +38,9 @@
 <h1>Busy times</h1>
 
 <!--
-  -- If there are any warnings or other messages from a prior action,
-  -- they appear above the rest of the content, just until the next 
-  -- action.
+   If there are any warnings or other messages from a prior action,
+   they appear above the rest of the content, just until the next 
+   action.
   -->
 
 {% with messages = get_flashed_messages() %}
@@ -55,7 +55,7 @@
 
 <h2>Date range</h2>
   <form action="/setrange" method="post">
-  <input type="text" name="daterange" size="12"
+  <input type="text" name="daterange" size="12" style="width: 12em"
     {% if session.daterange is defined %}
          value="{{session.daterange}}"
     {% endif %}
@@ -78,9 +78,17 @@
        );
     });
   </script>
+  <br>
 
-<br /><input type="submit" value="Choose" />
+  <h4>Time range</h4>
+  <input type="time" name="begin_time" value='09:00'>
+  to
+  <input type="time" name="end_time" value="17:00"><br>
+  <input type="submit" value="Choose">
 </form>
+
+
+
 
     <!--
     Show the calendar list (if we have it).  This will need to be turned into
@@ -89,18 +97,34 @@
     prefer down then across). 
     -->
 {% if g.calendars is defined  %}
+  <form action='/choose_calendars' method="post">
   <div class="row">
   {% for cal in g.calendars if cal.selected %}
-          <div class="col-md-4">
-	   {{ cal.summary }}
+    <div class="col-md-4">
+	   <input type="checkbox" value="{{ cal.id }}" name='to_read' checked> {{ cal.summary }}
           </div>
          {% if loop.index is divisibleby 3 %}
           </div> <div class="row">
          {% endif %}
   {% endfor %}
   </div>
+  <input type=submit value="Use selected calendars">
+  </form>
 {% endif %}
-    
+<br>
+  
+{% if g.events is defined  %}
+  <div class="row">
+  {% for event in g.events %}
+    <div class="col-md-4">
+     {{event.date_start | fmtdate}}: {{event.time_start | fmttime}} - {{event.time_end | fmttime}} {{ event.summary }}
+          </div>
+         {% if loop.index is divisibleby 3 %}
+          </div> <div class="row"><br>
+         {% endif %}
+  {% endfor %}
+  </div>
+{% endif %}  
 
   </div>  <!-- container (for bootstrap) -->
   </body> </html>
