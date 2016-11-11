@@ -79,11 +79,18 @@
     });
   </script>
   <br>
+  <br>
 
   <h4>Time range</h4>
-  <input type="time" name="begin_time" value='09:00'>
+  <input type="time" name="begin_time"  {% if session.begin_time is defined %}
+                                          value="{{session.begin_time}}"
+                                        {% endif %}
+  >
   to
-  <input type="time" name="end_time" value="17:00"><br>
+  <input type="time" name="end_time"  {% if session.end_time is defined %}
+                                          value="{{session.end_time}}"
+                                      {% endif %}>
+  <br>
   <input type="submit" value="Choose">
 </form>
 
@@ -101,7 +108,7 @@
   <div class="row">
   {% for cal in g.calendars if cal.selected %}
     <div class="col-md-4">
-	   <input type="checkbox" value="{{ cal.id }}" name='to_read' checked> {{ cal.summary }}
+	   <input type="checkbox" value="{{ cal.id }}" name='to_read'> {{ cal.summary }}
           </div>
          {% if loop.index is divisibleby 3 %}
           </div> <div class="row">
@@ -127,4 +134,5 @@
 {% endif %}  
 
   </div>  <!-- container (for bootstrap) -->
-  </body> </html>
+  </body> 
+  </html>

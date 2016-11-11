@@ -50,7 +50,8 @@ APPLICATION_NAME = 'MeetMe class project'
 @app.route("/index")
 def index():
     app.logger.debug("Entering index")
-    if 'begin_date' not in flask.session:
+    if True:
+    #if 'begin_date' not in flask.session:
         init_session_values()
     return render_template('index.html')
 
@@ -203,10 +204,11 @@ def setrange():
     widget.
     """
     app.logger.debug("Entering setrange")  
-    flask.flash("Setrange gave us '{}'".format(request.form.get('daterange')))
+    #flask.flash("Setrange gave us '{}'".format(request.form.get('daterange')))
     daterange = request.form.get('daterange')
+    flask.session['daterange'] = daterange
     timerange = [request.form.get('begin_time'), request.form.get('end_time')]
-    print("timerange", timerange)
+
     flask.session['daterange'] = daterange
     daterange_parts = daterange.split()
 
@@ -231,6 +233,7 @@ def init_session_values():
     Start with some reasonable defaults for date and time ranges.
     Note this must be run in app context ... can't call from main. 
     """
+    app.logger.debug("initing session values")
     # Default date span = tomorrow to 1 week from now
     now = arrow.now('local')     # We really should be using tz from browser
     tomorrow = now.replace(days=+1)
@@ -243,6 +246,7 @@ def init_session_values():
     # Default time span each day, 9 to 5
     flask.session["begin_time"] = interpret_time("9am")
     flask.session["end_time"] = interpret_time("5pm")
+    app.logger.debug(flask.session["begin_time"])
 
 def interpret_time(text):
     """
@@ -261,7 +265,7 @@ def interpret_time(text):
         app.logger.debug("Failed to interpret time")
         flask.flash("Time '{}' didn't match accepted formats 13:30 or 1:30pm".format(text))
         raise
-    return as_arrow.isoformat()
+    return str(as_arrow.time())
     #HACK #Workaround
     # isoformat() on raspberry Pi does not work for some dates
     # far from now.  It will fail with an overflow from time stamp out
@@ -279,8 +283,7 @@ def interpret_date(text):
     with the local time zone.
     """
     try:
-        as_arrow = arrow.get(text, "MM/DD/YYYY").replace(
-                tzinfo=tz.tzlocal())
+        as_arrow = arrow.get(text, "MM/DD/YYYY").replace(tzinfo='local')
     except:
             flask.flash("Date '{}' didn't fit expected format 12/31/2001")
             raise
@@ -299,7 +302,7 @@ def next_day(isotext):
 #
 ####
 
-def list_events(service, calendarIDs=['primary']):
+def list_events(service, calendarIDs):
     """
     """
     app.logger.debug("Entering list_events")
@@ -308,18 +311,24 @@ def list_events(service, calendarIDs=['primary']):
     for calID in calendarIDs:
         eventsResult = service.events().list(
             calendarId=calID, timeMin=now, singleEvents=True,
-            orderBy='startTime', maxResults=1).execute()
+            orderBy='startTime', maxResults=10).execute()
         events = eventsResult.get('items', [])
 
         for event in events:
             start = event['start'].get('dateTime', event['start'].get('date'))
             end = event['end'].get('dateTime', event['end'].get('date'))
+
             date_start = arrow.get(start)
             date_end = arrow.get(end) 
             summary = event['summary']
-            try:
+
+            if str(date_start.time()) <= flask.session['begin_time'] or str(date_end.time()) >= flask.session['end_time']:
+                app.logger.debug('Event {} at {}-{} skipped'.format(summary, date_start.time(), date_end.time()))
+                continue
+
+            if 'transperency' in event:
                 transperency = event['transperency']
-            except KeyError: 
+            else: 
                 transperency = None
 
             results.append(
@@ -328,8 +337,8 @@ def list_events(service, calendarIDs=['primary']):
                  "time_start": date_start.time(),
                  "time_end": date_end.time(),
                  "summary": summary,
-                 "transperency": transperency}
-                 )
+                 "transperency": transperency
+                 })
                 
     
     return sorted(results, key=event_sort_key) 
