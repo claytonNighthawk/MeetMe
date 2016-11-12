@@ -311,9 +311,9 @@ def list_events(service, calendarIDs):
     for calID in calendarIDs:
         eventsResult = service.events().list(
             calendarId=calID, timeMin=now, singleEvents=True,
-            orderBy='startTime', maxResults=10).execute()
+            orderBy='startTime').execute()
         events = eventsResult.get('items', [])
-
+        
         for event in events:
             start = event['start'].get('dateTime', event['start'].get('date'))
             end = event['end'].get('dateTime', event['end'].get('date'))
