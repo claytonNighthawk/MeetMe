@@ -323,21 +323,19 @@ def list_events(service, calendarIDs):
             summary = event['summary']
 
             if str(date_end.time()) <= flask.session['begin_time'] or str(date_start.time()) >= flask.session['end_time']:
-                app.logger.debug('Event {} at {}-{} skipped'.format(summary, date_start.time(), date_end.time()))
+                app.logger.debug('Event {} at {}-{} skipped, out of range {}-{}'.format(summary, date_start.time(), date_end.time(), flask.session['begin_time'], flask.session['end_time']))
                 continue
 
             if 'transperency' in event:
-                transperency = event['transperency']
-            else: 
-                transperency = None
-
+                app.logger.debug('Event {} at {}-{} skipped because it is transparent'.format(summary, date_start.time(), date_end.time()))
+                continue
+                
             results.append(
                 {"date_start": date_start.date(),
                  "date_end": date_end.date(),
                  "time_start": date_start.time(),
                  "time_end": date_end.time(),
                  "summary": summary,
-                 "transperency": transperency
                  })           
     
     return sorted(results, key=event_sort_key) 
