@@ -322,7 +322,7 @@ def list_events(service, calendarIDs):
             date_end = arrow.get(end) 
             summary = event['summary']
 
-            if str(date_start.time()) <= flask.session['begin_time'] or str(date_end.time()) >= flask.session['end_time']:
+            if str(date_end.time()) <= flask.session['begin_time'] or str(date_start.time()) >= flask.session['end_time']:
                 app.logger.debug('Event {} at {}-{} skipped'.format(summary, date_start.time(), date_end.time()))
                 continue
 
@@ -338,8 +338,7 @@ def list_events(service, calendarIDs):
                  "time_end": date_end.time(),
                  "summary": summary,
                  "transperency": transperency
-                 })
-                
+                 })           
     
     return sorted(results, key=event_sort_key) 
 
