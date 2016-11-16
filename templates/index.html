@@ -121,9 +121,11 @@
 <br>
   
 {% if g.events is defined  %}
+  <form action='/ignore_unimportant_events' method="post">
   <div class="row">
   {% for event in g.events %}
     <div class="col-md-4">
+    <input type="checkbox" value="{{ event.date_start + ',' + event.time_start + ',' + event.time_end }}" name='events_to_read'> 
      {{event.date_start | fmtdate}}: {{event.time_start | fmttime}} - {{event.time_end | fmttime}} {{ event.summary }}
           </div>
          {% if loop.index is divisibleby 3 %}
@@ -131,7 +133,10 @@
          {% endif %}
   {% endfor %}
   </div>
+  <input type=submit value="Ignore Selected Events">
+  </form>
 {% endif %}  
+<br>
 
   </div>  <!-- container (for bootstrap) -->
   </body> 
