@@ -82,14 +82,14 @@
   <br>
 
   <h4>Time range</h4>
-  <input type="time" name="begin_time"  {% if session.begin_time is defined %}
-                                          value="{{session.begin_time}}"
-                                        {% endif %}
+  <input type="time" name="daily_begin_time"  {% if session.daily_begin_time is defined %}
+                                                value="{{session.daily_begin_time}}"
+                                              {% endif %}
   >
   to
-  <input type="time" name="end_time"  {% if session.end_time is defined %}
-                                          value="{{session.end_time}}"
-                                      {% endif %}>
+  <input type="time" name="daily_end_time"  {% if session.daily_end_time is defined %}
+                                              value="{{session.daily_end_time}}"
+                                            {% endif %}>
   <br>
   <input type="submit" value="Choose">
 </form>
@@ -121,12 +121,12 @@
 <br>
   
 {% if g.events is defined  %}
-  <form action='/ignore_unimportant_events' method="post">
+<form action='/ignore_unimportant_events' method="post">
   <div class="row">
   {% for event in g.events %}
     <div class="col-md-4">
-    <input type="checkbox" value="{{ event.date_start + ',' + event.time_start + ',' + event.time_end }}" name='events_to_read'> 
-     {{event.date_start | fmtdate}}: {{event.time_start | fmttime}} - {{event.time_end | fmttime}} {{ event.summary }}
+    <input type="checkbox" value="{{ event.event_id }}" name='events_to_ignore'> 
+      {{event.dateTime_start | fmtdate}}: {{event.dateTime_start | fmttime}} - {{event.dateTime_end | fmttime}} {{ event.summary }}
           </div>
          {% if loop.index is divisibleby 3 %}
           </div> <div class="row"><br>
@@ -134,7 +134,7 @@
   {% endfor %}
   </div>
   <input type=submit value="Ignore Selected Events">
-  </form>
+</form>
 {% endif %}  
 <br>
 

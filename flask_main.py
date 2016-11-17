@@ -73,6 +73,12 @@ def choose():
 
     if 'calendar_ids' in flask.session:
         flask.g.events = list_events(gcal_service, flask.session['calendar_ids'])
+        free_times = get_free_times(flask.g.events)
+        print("appended busy blocks")
+        for event in free_times:
+                print(event)
+
+
     return render_template('index.html')
 
 ####
@@ -207,20 +213,28 @@ def setrange():
     #flask.flash("Setrange gave us '{}'".format(request.form.get('daterange')))
     daterange = request.form.get('daterange')
     flask.session['daterange'] = daterange
-    timerange = [request.form.get('begin_time'), request.form.get('end_time')]
+    timerange = [request.form.get('daily_begin_time'), request.form.get('daily_end_time')]
 
     flask.session['daterange'] = daterange
     daterange_parts = daterange.split()
 
     flask.session['begin_date'] = interpret_date(daterange_parts[0])
     flask.session['end_date'] = interpret_date(daterange_parts[2])
-    flask.session['begin_time'] = interpret_time(timerange[0])
-    flask.session['end_time'] = interpret_time(timerange[1])
+    flask.session['daily_begin_time'] = interpret_time(timerange[0])
+    flask.session['daily_end_time'] = interpret_time(timerange[1])
 
     app.logger.debug("Setrange parsed {} - {}  dates as {} - {}".format(
         daterange_parts[0], daterange_parts[1], 
         flask.session['begin_date'], flask.session['end_date']))
     return flask.redirect(flask.url_for("choose"))
+
+@app.route('/ignore_unimportant_events', methods=['POST'])
+def ignore_unimportant_events():
+    app.logger.debug('Entering ignore unimportant events')
+    ignoreable_events = request.form.getlist('events_to_ignore')
+    flask.session['ignoreable_events'] = ignoreable_events
+    return flask.redirect(flask.url_for('choose'))
+
 
 ####
 #
@@ -244,9 +258,10 @@ def init_session_values():
             tomorrow.format("MM/DD/YYYY"),
             nextweek.format("MM/DD/YYYY"))
     # Default time span each day, 9 to 5
-    flask.session["begin_time"] = interpret_time("9am")
-    flask.session["end_time"] = interpret_time("5pm")
-    app.logger.debug(flask.session["begin_time"])
+    flask.session["daily_begin_time"] = interpret_time("9am")
+    flask.session["daily_end_time"] = interpret_time("5pm")
+    app.logger.debug(flask.session["daily_begin_time"])
+    app.logger.debug(flask.session["daily_end_time"])
 
 def interpret_time(text):
     """
@@ -275,7 +290,6 @@ def interpret_time(text):
     # removed when Arrow or Dateutil.tz is fixed.
     # FIXME: Remove the workaround when arrow is fixed (but only after testing
     # on raspberry Pi --- failure is likely due to 32-bit integers on that platform)
-
 
 def interpret_date(text):
     """
@@ -307,47 +321,82 @@ def list_events(service, calendarIDs):
     """
     app.logger.debug("Entering list_events")
     now = arrow.utcnow()
+    then = next_day(flask.session['end_date'])
     results = []
     for calID in calendarIDs:
         eventsResult = service.events().list(
-            calendarId=calID, timeMin=now, singleEvents=True,
+            calendarId=calID, timeMin=now, timeMax=then, singleEvents=True,
             orderBy='startTime').execute()
         events = eventsResult.get('items', [])
-        
-        results = busy_times(app, events, flask.session["begin_date"], flask.session['end_time'])
-    
-    return sorted(results, key=event_sort_key)
 
-def event_sort_key(event):
-    return (event['date_start'], event['time_start'])    
+        for event in events:
 
-def busy_times(app, events, daily_begin_time, daily_end_time):
-    for event in events:
             start = event['start'].get('dateTime', event['start'].get('date'))
             end = event['end'].get('dateTime', event['end'].get('date'))
+            event_id = event['id']
 
             date_start = arrow.get(start)
             date_end = arrow.get(end) 
             summary = event['summary']
 
-            if str(date_end.time()) <= daily_begin_time or str(date_start.time()) >= daily_end_time:
-                app.logger.debug('Event {} at {}-{} skipped, out of range {}-{}'.format(summary, date_start.time(), date_end.time(), flask.session['begin_time'], flask.session['end_time']))
+            if str(date_end.time()) <= flask.session["daily_begin_time"] or str(date_start.time()) >= flask.session['daily_end_time']:
+                app.logger.debug('Event {} at {}-{} skipped, out of time range {}-{}'.format(summary, date_start.time(), date_end.time(), flask.session['daily_begin_time'], flask.session['daily_end_time']))
                 continue
 
-            if 'transperency' in event:
+            if 'transparency' in event:
                 app.logger.debug('Event {} at {}-{} skipped because it is transparent'.format(summary, date_start.time(), date_end.time()))
                 continue
+
+            if 'ignoreable_events' in flask.session:
+                if event_id in flask.session['ignoreable_events']:
+                    app.logger.debug('Event {} ignored because it was selected as ignorable'.format(summary))
+                    continue
                 
             results.append(
-                {"date_start": date_start.date(),
-                 "date_end": date_end.date(),
-                 "time_start": date_start.time(),
-                 "time_end": date_end.time(),
+                {"dateTime_start": date_start.isoformat(),
+                 "dateTime_end": date_end.isoformat(),
                  "summary": summary,
+                 "event_id": event_id,
                  })
-            
-    return results
-    
+
+    return sorted(results, key=event_sort_key)
+
+def event_sort_key(event):
+    return (event['dateTime_start'])
+
+def get_free_times(events): #FIXME currently destroys the event list
+    busy_blocks = []
+
+    for i in range(len(events)):
+        events[i].pop('event_id')
+        starti0 = arrow.get(events[i-1]['dateTime_start'])
+        endi0 = arrow.get(events[i-1]['dateTime_end'])
+        starti1 = arrow.get(events[i]['dateTime_start'])    
+        endi1 = arrow.get(events[i]['dateTime_end'])
+
+        if starti0 < starti1 and endi0 > endi1:
+            events[i]['transparency'] = True
+
+    for event in events:
+        if 'transparency' not in event:
+            print(event)
+
+    for i in range(len(events)):
+        if 'transparency' not in event:
+            print(events[i]['summary'])
+            endi0 = arrow.get(events[i-1]['dateTime_end'])
+            starti1 = arrow.get(events[i]['dateTime_start'])
+            if endi0 >= starti1:
+                events[i]['dateTime_start'] = events[i-1]['dateTime_start']
+                print('comparing {0} to {1} extending {1} to {2}-{3}\n'.format(events[i-1]['summary'], events[i]['summary'], arrow.get(events[i]['dateTime_start']).time(), arrow.get(events[i]['dateTime_end']).time()))
+            else:                
+                print('appending', events[i-1]['summary'])
+                busy_blocks.append(events[i-1])
+
+    return busy_blocks
+
+
+   
 def list_calendars(service):
     """
     Given a google 'service' object, return a list of
@@ -363,24 +412,23 @@ def list_calendars(service):
         kind = cal["kind"]
         id = cal["id"]
         if "description" in cal: 
-                desc = cal["description"]
+            desc = cal["description"]
         else:
-                desc = "(no description)"
+            desc = "(no description)"
         summary = cal["summary"]
         # Optional binary attributes with False as default
         selected = ("selected" in cal) and cal["selected"]
         primary = ("primary" in cal) and cal["primary"]
         
-
         result.append(
-            { "kind": kind,
-                "id": id,
-                "summary": summary,
-                "selected": selected,
-                "primary": primary
-                })
-    return sorted(result, key=cal_sort_key)
+            {"kind": kind,
+             "id": id,
+             "summary": summary,
+             "selected": selected,
+             "primary": primary,
+             })
 
+    return sorted(result, key=cal_sort_key)
 
 def cal_sort_key(cal):
     """
@@ -408,7 +456,7 @@ def cal_sort_key(cal):
 @app.template_filter('fmtdate')
 def format_arrow_date(date):
     try: 
-        normal = arrow.get(date)
+        normal = arrow.get(str(date))
         return normal.format("ddd MM/DD/YYYY")
     except:
         return "(bad date)"
