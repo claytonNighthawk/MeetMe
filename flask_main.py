@@ -335,16 +335,16 @@ def list_events(service, calendarIDs):
             end = event['end'].get('dateTime', event['end'].get('date'))
             event_id = event['id']
 
-            date_start = arrow.get(start)
-            date_end = arrow.get(end) 
+            dateTime_start = arrow.get(start)
+            dateTime_end = arrow.get(end) 
             summary = event['summary']
 
-            if str(date_end.time()) <= flask.session["daily_begin_time"] or str(date_start.time()) >= flask.session['daily_end_time']:
-                app.logger.debug('Event {} at {}-{} skipped, out of time range {}-{}'.format(summary, date_start.time(), date_end.time(), flask.session['daily_begin_time'], flask.session['daily_end_time']))
+            if str(dateTime_end.time()) <= flask.session["daily_begin_time"] or str(dateTime_start.time()) >= flask.session['daily_end_time']:
+                app.logger.debug('Event {} at {}-{} skipped, out of time range {}-{}'.format(summary, dateTime_start.time(), dateTime_end.time(), flask.session['daily_begin_time'], flask.session['daily_end_time']))
                 continue
 
             if 'transparency' in event:
-                app.logger.debug('Event {} at {}-{} skipped because it is transparent'.format(summary, date_start.time(), date_end.time()))
+                app.logger.debug('Event {} skipped because it is transparent'.format(summary))
                 continue
 
             if 'ignoreable_events' in flask.session:
@@ -353,8 +353,8 @@ def list_events(service, calendarIDs):
                     continue
                 
             results.append(
-                {"dateTime_start": date_start.isoformat(),
-                 "dateTime_end": date_end.isoformat(),
+                {"dateTime_start": dateTime_start.isoformat(),
+                 "dateTime_end": dateTime_end.isoformat(),
                  "summary": summary,
                  "event_id": event_id,
                  })
@@ -362,39 +362,39 @@ def list_events(service, calendarIDs):
     return sorted(results, key=event_sort_key)
 
 def event_sort_key(event):
-    return (event['dateTime_start'])
+    return event['dateTime_start']
 
-def get_free_times(events): #FIXME currently destroys the event list
-    busy_blocks = []
-
-    for i in range(len(events)):
-        events[i].pop('event_id')
-        starti0 = arrow.get(events[i-1]['dateTime_start'])
-        endi0 = arrow.get(events[i-1]['dateTime_end'])
-        starti1 = arrow.get(events[i]['dateTime_start'])    
-        endi1 = arrow.get(events[i]['dateTime_end'])
+def get_free_times(event_list): #FIXME currently destroys the event list
+    events = []
+    for i in range(len(event_list)-1):
+        event_list[i].pop('event_id')
+        starti0 = arrow.get(event_list[i]['dateTime_start'])
+        endi0 = arrow.get(event_list[i]['dateTime_end'])
+        starti1 = arrow.get(event_list[i+1]['dateTime_start'])    
+        endi1 = arrow.get(event_list[i+1]['dateTime_end'])
 
         if starti0 < starti1 and endi0 > endi1:
-            events[i]['transparency'] = True
+            continue
 
+        events.append(event_list[i])
+
+    print("printing events that don't overlap completely with others")
     for event in events:
-        if 'transparency' not in event:
-            print(event)
+        print(event)
+    print()
 
-    for i in range(len(events)):
-        if 'transparency' not in event:
-            print(events[i]['summary'])
-            endi0 = arrow.get(events[i-1]['dateTime_end'])
-            starti1 = arrow.get(events[i]['dateTime_start'])
-            if endi0 >= starti1:
-                events[i]['dateTime_start'] = events[i-1]['dateTime_start']
-                print('comparing {0} to {1} extending {1} to {2}-{3}\n'.format(events[i-1]['summary'], events[i]['summary'], arrow.get(events[i]['dateTime_start']).time(), arrow.get(events[i]['dateTime_end']).time()))
-            else:                
-                print('appending', events[i-1]['summary'])
-                busy_blocks.append(events[i-1])
+    busy_blocks = []
+    for i in range(len(events)-1):
+        endi0 = arrow.get(events[i]['dateTime_end'])
+        starti1 = arrow.get(events[i+1]['dateTime_start'])
+        if endi0 >= starti1:
+            events[i+1]['dateTime_start'] = events[i]['dateTime_start']
+            print('comparing {0} to {1} extending {1} to {2}-{3}\n'.format(events[i]['summary'], events[i+1]['summary'], arrow.get(events[i+1]['dateTime_start']).time(), arrow.get(events[i+1]['dateTime_end']).time()))
+        else:                
+            print('appending', events[i]['summary'])
+            busy_blocks.append(events[i])
 
     return busy_blocks
-
 
    
 def list_calendars(service):
