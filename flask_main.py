@@ -50,8 +50,7 @@ APPLICATION_NAME = 'MeetMe class project'
 @app.route("/index")
 def index():
     app.logger.debug("Entering index")
-    if True:
-    #if 'begin_date' not in flask.session:
+    if 'begin_date' not in flask.session:
         init_session_values()
     return render_template('index.html')
 
@@ -72,12 +71,20 @@ def choose():
     flask.g.calendars = list_calendars(gcal_service)
 
     if 'calendar_ids' in flask.session:
-        flask.g.events = list_events(gcal_service, flask.session['calendar_ids'])
-        busy_blocks = get_busy_blocks(flask.g.events)
-        free_times = get_free_times(busy_blocks)
-
-
+        flask.session['events'] = list_events(gcal_service, flask.session['calendar_ids'])   
+        
     return render_template('index.html')
+
+@app.route('/get_free_times', methods=['POST'])
+def get_free_times():
+    app.logger.debug('Redirecting to show free times page')
+    #events = request.form['get_free_times_button']     #ideally would like to not put all the events in the cookie 
+    events = flask.session['events']                    #but I do not know how to get them from g since it goes away really quickly
+                                                        #and as a value on the button would require a lot of effort to get the list  
+    busy_blocks = get_busy_blocks(events)               #back as a list of dicts
+    flask.g.free_times = calc_free_times(busy_blocks)
+
+    return render_template('free_times.html')
 
 ####
 #
@@ -233,7 +240,6 @@ def ignore_unimportant_events():
     flask.session['ignoreable_events'] = ignoreable_events
     return flask.redirect(flask.url_for('choose'))
 
-
 ####
 #
 #   Initialize session variables 
@@ -336,21 +342,27 @@ def list_events(service, calendarIDs):
             dateTime_start = arrow.get(start)
             dateTime_end = arrow.get(end) 
             summary = event['summary']
+            all_day_event = False
 
             if 'transparency' in event:
-                app.logger.debug('Event {} skipped because it is transparent'.format(summary))
+                app.logger.debug("Event '{}' skipped because it is transparent".format(summary))
                 continue
 
-            if 'ignoreable_events' in flask.session:
-                if event_id in flask.session['ignoreable_events']:
-                    app.logger.debug('Event {} ignored because it was selected as ignorable'.format(summary))
-                    continue
+            if 'ignoreable_events' in flask.session and event_id in flask.session['ignoreable_events']:
+                app.logger.debug("Event '{}' ignored because it was selected as ignorable".format(summary))
+                continue
 
-            if str(dateTime_end.time()) <= flask.session["daily_begin_time"] and str(dateTime_start.time()) >= flask.session['daily_end_time']:
-                ...
+            if str(dateTime_end.time()) == '00:00:00' and str(dateTime_start.time()) == '00:00:00':
+                app.logger.debug("Event '{}' must be nontransparent all day event, will not skip".format(summary))
+                dateTime_end = dateTime_end.replace(minutes=-1)
+                all_day_event = True
 
-            if str(dateTime_end.time()) <= flask.session["daily_begin_time"] or str(dateTime_start.time()) >= flask.session['daily_end_time']:
-                app.logger.debug('Event {} at {}-{} skipped, out of time range {}-{}'.format(summary, dateTime_start.time(), dateTime_end.time(), flask.session['daily_begin_time'], flask.session['daily_end_time']))
+            elif str(dateTime_start.time()) <= flask.session["daily_begin_time"] and str(dateTime_end.time()) >= flask.session['daily_end_time']:
+                app.logger.debug("Event '{}' must be nontransparent really long almost all day event, will not skip".format(summary))
+                all_day_event = True
+
+            elif str(dateTime_end.time()) <= flask.session["daily_begin_time"] or str(dateTime_start.time()) >= flask.session['daily_end_time']:
+                app.logger.debug("Event '{}' at {}-{} skipped, out of time range of {}-{}".format(summary, dateTime_start.time(), dateTime_end.time(), flask.session['daily_begin_time'], flask.session['daily_end_time']))
                 continue
                 
             results.append(
@@ -358,6 +370,7 @@ def list_events(service, calendarIDs):
                  "dateTime_end": dateTime_end.isoformat(),
                  "summary": summary,
                  "event_id": event_id,
+                 "all_day_event": all_day_event,
                  })
 
     return sorted(results, key=event_sort_key)
@@ -365,22 +378,30 @@ def list_events(service, calendarIDs):
 def event_sort_key(event):
     return event['dateTime_start']
 
-def get_busy_blocks(event_list): #FIXME currently destroys the event list
+def normalize_ending_time(endTime, event):
+    #scales back end time if greater than daily end   
+    #makes creating free time blocks easier.
+    daily_end_time = flask.session['daily_end_time'].split(":")                     
+    endTime = endTime.replace(hour=int(daily_end_time[0]), minute=int(daily_end_time[1]))   
+    return endTime.isoformat()
+
+def get_busy_blocks(event_list): 
     events = []
     for i in range(len(event_list)):
-        event_list[i].pop('event_id')
+        #event_list[i].pop('event_id')
         starti0 = arrow.get(event_list[i-1]['dateTime_start'])
         endi0 = arrow.get(event_list[i-1]['dateTime_end'])
         starti1 = arrow.get(event_list[i]['dateTime_start'])    
         endi1 = arrow.get(event_list[i]['dateTime_end'])
         if starti0 <= starti1 and endi0 >= endi1:
+            app.logger.debug("Skipping event '{}' because it overlaps '{}' completely".format(event_list[i]['summary'], event_list[i-1]['summary']))
             continue
         events.append(event_list[i])
 
-    print("printing events that don't overlap completely with others")
-    for event in events:
-        print(event)
-    print()
+    # print("printing events that don't overlap completely with others")
+    # for event in events:
+    #     print(event)
+    # print()
 
     busy_blocks = []
     for i in range(len(events)-1):
@@ -388,20 +409,78 @@ def get_busy_blocks(event_list): #FIXME currently destroys the event list
         starti1 = arrow.get(events[i+1]['dateTime_start'])
         if endi0 >= starti1:
             events[i+1]['dateTime_start'] = events[i]['dateTime_start']
-            app.logger.debug('comparing {0} to {1}, extending {1} to {2}-{3}\n'.format(events[i]['summary'], events[i+1]['summary'], arrow.get(events[i+1]['dateTime_start']).time(), arrow.get(events[i+1]['dateTime_end']).time()))
-        else:                
-            app.logger.debug('appending {}'.format(events[i]['summary']))
+            app.logger.debug("comparing '{0}' to '{1}', extending '{1}' to {2}-{3}\n".format(events[i]['summary'], events[i+1]['summary'], arrow.get(events[i+1]['dateTime_start']).time(), arrow.get(events[i+1]['dateTime_end']).time()))
+        else:
+            if str(endi0.time()) > flask.session['daily_end_time']:
+                events[i]['dateTime_end'] = normalize_ending_time(endi0, events[i])                  
+            app.logger.debug("appending '{}'".format(events[i]['summary']))
             busy_blocks.append(events[i])
 
+    app.logger.debug("appending '{}'".format(events[-1]['summary']))       
     busy_blocks.append(events[-1])
+
     print("appended busy blocks")
     for event in busy_blocks:
         print(event)
+    print()
 
     return busy_blocks
 
-def get_free_times(busy_blocks):
-    ...
+def calc_free_times(busy_blocks):
+    begin_date = arrow.get(flask.session['begin_date'])
+    end_date = arrow.get(flask.session['end_date'])
+    days = (end_date-begin_date).days
+
+    daily_begin_time = flask.session['daily_begin_time'].split(":")
+    daily_end_time = flask.session['daily_end_time'].split(":")
+
+    day_dateTime_begin = begin_date.replace(hour=int(daily_begin_time[0]), minute=int(daily_begin_time[1]))
+    day_dateTime_end = begin_date.replace(hour=int(daily_end_time[0]), minute=int(daily_end_time[1]))
+
+    free_times = []
+    for i in range(days+1):
+        free_times.append(
+            {"dateTime_start": day_dateTime_begin.isoformat(),
+             "dateTime_end": day_dateTime_end.isoformat(),
+             "summary": 'free time',
+             })
+        day_dateTime_begin = day_dateTime_begin.replace(days=+1)
+        day_dateTime_end = day_dateTime_end.replace(days=+1)
+
+
+    for i, busy_time in enumerate(busy_blocks):
+        current_time = busy_time['dateTime_start']
+        for j, free_time in enumerate(free_times):
+            if busy_time['all_day_event'] and busy_time['dateTime_start'] <= free_time['dateTime_start']:
+
+                del free_times[j]
+                break
+            elif busy_time['dateTime_end'] <= free_time['dateTime_start']:
+                app.logger.debug('continuing {} <= {}'.format(busy_time['dateTime_end'], free_time['dateTime_start']))
+                continue
+
+            if busy_time['dateTime_end'] <= free_time['dateTime_end']:
+                part1 = {"dateTime_start": free_time['dateTime_start'],
+                         "dateTime_end": busy_time['dateTime_start'],
+                         "summary": 'free time',
+                        }
+                part2 = {"dateTime_start": busy_time['dateTime_end'],
+                         "dateTime_end": free_time['dateTime_end'],
+                         "summary": 'free time',
+                        }
+                app.logger.debug('deleting \n{} and appending \n{} and \n{}\n'.format(free_times[j], part1, part2))
+                del free_times[j]
+
+                if part1['dateTime_start'] < part1['dateTime_end']: #makes sure parts have positive time span
+                    free_times.append(part1)
+
+                if part2['dateTime_start'] < part2['dateTime_end']: #negative or 0 time span would not make sense
+                    free_times.append(part2)
+                break
+
+        free_times.sort(key=event_sort_key)
+
+    return free_times
 
    
 def list_calendars(service):
