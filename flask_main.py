@@ -51,7 +51,8 @@ APPLICATION_NAME = 'MeetMe class project'
 @app.route("/index")
 def index():
     app.logger.debug("Entering index")
-    if 'begin_date' not in flask.session:
+    if True:
+    # if 'begin_date' not in flask.session:
         init_session_values()
     return render_template('index.html')
 
@@ -273,9 +274,10 @@ def init_session_values():
     # Default time span each day, 9 to 5
     flask.session["daily_begin_time"] = interpret_time("9am")
     flask.session["daily_end_time"] = interpret_time("5pm")
+    flask.session['ignoreable_events'] = None
     app.logger.debug(flask.session["daily_begin_time"])
     app.logger.debug(flask.session["daily_end_time"])
-    flask.session['ignoreable_events'] = None
+    app.logger.debug(flask.session["ignoreable_events"])
 
 def interpret_time(text):
     """

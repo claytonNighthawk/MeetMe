@@ -140,10 +140,10 @@ def get_busy_blocks(event_list, session_daily_end_time):
             continue
         events.append(event_list[i])
 
-    print("printing events that don't overlap completely with others")
-    for event in events:
-        print(event)
-    print()
+    # print("printing events that don't overlap completely with others")
+    # for event in events:
+    #     print(event)
+    # print()
     if len(events) < 2:
         print('len(events) < 2, returning events')
         return events
@@ -154,27 +154,26 @@ def get_busy_blocks(event_list, session_daily_end_time):
         starti1 = arrow.get(events[i+1]['dateTime_start'])
         if endi0 >= starti1:
             events[i+1]['dateTime_start'] = events[i]['dateTime_start']
-            print("comparing '{0}' to '{1}', extending '{1}' to {2}-{3}\n".format(events[i]['summary'], events[i+1]['summary'], arrow.get(events[i+1]['dateTime_start']).time(), arrow.get(events[i+1]['dateTime_end']).time()))
+            # print("comparing '{0}' to '{1}', extending '{1}' to {2}-{3}\n".format(events[i]['summary'], events[i+1]['summary'], arrow.get(events[i+1]['dateTime_start']).time(), arrow.get(events[i+1]['dateTime_end']).time()))
         else:
             if str(endi0.time()) > session_daily_end_time:
                 events[i]['dateTime_end'] = normalize_ending_time(events[i], session_daily_end_time)                  
-            print("appending '{}'".format(events[i]['summary']))
+            # print("appending '{}'".format(events[i]['summary']))
             busy_blocks.append(events[i])
 
     if str(arrow.get(events[-1]['dateTime_end']).time()) > session_daily_end_time:
         events[-1]['dateTime_end'] = normalize_ending_time(events[-1], session_daily_end_time)   
-    print("appending '{}'".format(events[-1]['summary']))       
+    # print("appending '{}'".format(events[-1]['summary']))       
     busy_blocks.append(events[-1])
 
-    print("appended busy blocks")
-    for event in busy_blocks:
-        print(event)
-    print()
+    # print("appended busy blocks")
+    # for event in busy_blocks:
+    #     print(event)
+    # print()
 
     return busy_blocks
 
 def calc_free_times(busy_blocks, session_begin_date, session_end_date, session_daily_begin_time, session_daily_end_time):
-    print(session_begin_date, session_end_date, session_daily_begin_time, session_daily_end_time)
     print('Entering cft.calc_free_times')
     begin_date = arrow.get(session_begin_date)
     end_date = arrow.get(session_end_date)
@@ -204,7 +203,7 @@ def calc_free_times(busy_blocks, session_begin_date, session_end_date, session_d
                 del free_times[j]
                 break
             elif busy_time['dateTime_end'] <= free_time['dateTime_start']:
-                print('continuing {} <= {}'.format(busy_time['dateTime_end'], free_time['dateTime_start']))
+                # print('continuing {} <= {}'.format(busy_time['dateTime_end'], free_time['dateTime_start']))
                 continue
 
             if busy_time['dateTime_end'] <= free_time['dateTime_end']:
@@ -216,7 +215,7 @@ def calc_free_times(busy_blocks, session_begin_date, session_end_date, session_d
                          "dateTime_end": free_time['dateTime_end'],
                          "summary": 'free time',
                         }
-                print('deleting \n{} and appending \n{} and \n{}\n'.format(free_times[j], part1, part2))
+                # print('deleting \n{} and appending \n{} and \n{}\n'.format(free_times[j], part1, part2))
                 del free_times[j]
 
                 if part1['dateTime_start'] < part1['dateTime_end']: #makes sure parts have positive time span
@@ -228,8 +227,4 @@ def calc_free_times(busy_blocks, session_begin_date, session_end_date, session_d
 
         free_times.sort(key=event_sort_key)
 
-    print("free times")
-    for event in free_times:
-        print(event)
-    print()
     return free_times
