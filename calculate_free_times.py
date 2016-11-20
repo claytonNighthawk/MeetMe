@@ -68,15 +68,14 @@ def cal_sort_key(cal):
          primary_key = "X"
     return (primary_key, selected_key, cal["summary"])
 
-def list_events(service, calendarIDs, session_end_date, session_daily_begin_time, session_daily_end_time, session_ignoreable_events): 
+def list_events(service, calendarIDs, session_begin_date, session_end_date, session_daily_begin_time, session_daily_end_time, session_ignoreable_events): 
     print(session_end_date)
     print("Entering cft.list_events")
-    now = arrow.utcnow()
     then = next_day(session_end_date)
     results = []
     for calID in calendarIDs:
         eventsResult = service.events().list(
-            calendarId=calID, timeMin=now, timeMax=then, singleEvents=True,
+            calendarId=calID, timeMin=session_begin_date, timeMax=then, singleEvents=True,
             orderBy='startTime').execute()
         events = eventsResult.get('items', [])
 

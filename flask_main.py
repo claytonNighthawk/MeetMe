@@ -72,7 +72,7 @@ def choose():
     flask.g.calendars = cft.list_calendars(gcal_service)
 
     if 'calendar_ids' in flask.session:
-        flask.session['events'] = cft.list_events(gcal_service, flask.session['calendar_ids'], flask.session['end_date'], flask.session['daily_begin_time'], flask.session['daily_end_time'], flask.session['ignoreable_events'])   
+        flask.session['events'] = cft.list_events(gcal_service, flask.session['calendar_ids'], flask.session['begin_date'], flask.session['end_date'], flask.session['daily_begin_time'], flask.session['daily_end_time'], flask.session['ignoreable_events'])   
      
     print("printing events")
     for event in flask.session['events']:
@@ -83,7 +83,7 @@ def choose():
 @app.route('/get_free_times', methods=['POST'])
 def get_free_times():
     """
-    ideally I would like to not put all the events in the cookie
+    Ideally I would like to not put all the events in the cookie
     but I do not know how to get them from g since it goes away so quickly
     and as a value on the button would require a lot of effort to get the button value  
     back as a list of dicts since it is just a string on return
