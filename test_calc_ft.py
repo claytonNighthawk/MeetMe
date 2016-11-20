@@ -17,7 +17,7 @@ event 1 and event 2 test to see if get_busy_blocks with combine them
 event 3 is an event that starts before the daily time window but overlaps that time we care about too so it needs to be included 
 event 4 totally overlaps event 3 and so can be ignored
 event 5 is an event that starts before the daily end time but goes past the end of the daily time window, this should be included 
-event 6 is an all day event that test if program can handle events that begin before the time range and end after the time range 
+event 6 is an all day event that tests if the program can handle events that begin before the time range and end after the time range 
 '''
 events = [{'dateTime_start': '2016-11-21T09:00:00-08:00', 'all_day_event': False, 'dateTime_end': '2016-11-21T11:00:00-08:00', 'summary': 'busy'},
           {'dateTime_start': '2016-11-21T12:00:00-08:00', 'all_day_event': False, 'dateTime_end': '2016-11-21T13:00:00-08:00', 'summary': "Events that touch but don't overlap 1"},
