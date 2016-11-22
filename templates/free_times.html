@@ -38,7 +38,7 @@
 {% if g.free_times is defined  %}
   <div class="row">
   {% for event in g.free_times %}
-    <div class="col-md-6">
+    <div class="col-md-8">
       {{event.dateTime_start | fmtdate}}, {{event.dateTime_start | fmttime}} - {{event.dateTime_end | fmttime}} 
           </div>
          {% if loop.index is divisibleby 2 %}
@@ -48,6 +48,8 @@
   </div>
 {% endif %}  
 <br>
+<br>
+<a href="/index">Go Back to Busy Times Selector</a>
 
 </div>  <!-- container (for bootstrap) -->
 </body> 
