@@ -37,22 +37,6 @@
 
 <h1>Busy times</h1>
 
-<!--
-   If there are any warnings or other messages from a prior action,
-   they appear above the rest of the content, just until the next 
-   action.
-  -->
-
-{% with messages = get_flashed_messages() %}
-  {% if messages %}
-    <ul class=flashes>
-    {% for message in messages %}
-      <li>{{ message }}</li>
-    {% endfor %}
-    </ul>
-  {% endif %}
-{% endwith %}
-
 <h2>Date range</h2>
   <form action="/setrange" method="post">
   <input type="text" name="daterange" size="12" style="width: 12em"
