@@ -75,10 +75,6 @@ def choose():
     if 'calendar_ids' in flask.session:
         flask.session['events'] = cft.list_events(gcal_service, flask.session['calendar_ids'], flask.session['begin_date'], flask.session['end_date'], flask.session['daily_begin_time'], flask.session['daily_end_time'], flask.session['ignoreable_events'])   
      
-    print("printing events")
-    for event in flask.session['events']:
-        print(event)
-    print()   
     return render_template('index.html')
 
 @app.route('/get_free_times', methods=['POST'])
