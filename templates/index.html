@@ -78,6 +78,13 @@
   <input type="submit" value="Choose">
 </form>
 
+{% if session.contributing %}
+  <script>
+    $('#daterange').prop('readyonly', true);
+    $('#daily_begin_time').prop('readyonly', true);
+    $('#daily_end_time').prop('readyonly', true);
+  </script>
+{% endif %}
 
 
 
@@ -107,10 +114,10 @@
 {% endif %}
 <br>
   
-{% if session.events is defined  %}
+{% if g.events is defined  %}
 <form action='/ignore_unimportant_events' method="post">
   <div class="row">
-  {% for event in session.events %}
+  {% for event in g.events %}
     <div class="col-md-6">
     <input type="checkbox" value="{{ event.event_id }}" name='events_to_ignore'> 
       {{event.dateTime_start | fmtdate}}, {{event.dateTime_start | fmttime}} - {{event.dateTime_end | fmttime}} {{ event.summary }}

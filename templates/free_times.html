@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html lang="en"> <head>
-<title>Appointments</title>
+<title>Free Times</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <link rel="stylesheet" type="text/css"
@@ -24,16 +24,31 @@
      from CDNs instead.
 -->
 
-<script type="text/javascript" src="//cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+<!-- <script type="text/javascript" src="//cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script> -->
 
-<script type="text/javascript" src="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.js"></script>
-<link rel="stylesheet" type="text/css" href="//cdn.jsdelivr.net/bootstrap.daterangepicker/2/daterangepicker.css" />
 </head>
 
 <body>
 <div class="container">
 
 <h1>Free times</h1>
+<!-- <script>
+    document.write('<a href="' + document.referrer + '">Go Back to Busy Times Selector</a>'); 
+    //keeps the information on the screen as it was before they left it
+</script>
+<br> -->
+
+{% if session.contributing %}
+  <h4>Choose Meeting Time</h4>
+  <!-- drop down with free_time start times -->
+  to
+  <!-- drop down with possible ending times every 15 minutes for 3 hours or until the free time block ends -->
+{% else %}
+  contribute linkback = {{ g.linkback }}<br> 
+  <a href="mailto:?Subject=Meeting%20Time%3F;&body={{ g.message }}%20{{ g.linkback }}" target="_top">Send Mail with contribute link</a>
+{% endif %}
+<br>
+<br>
 
 {% if g.free_times is defined  %}
   <div class="row">
@@ -41,15 +56,13 @@
     <div class="col-md-8">
       {{event.dateTime_start | fmtdate}}, {{event.dateTime_start | fmttime}} - {{event.dateTime_end | fmttime}} 
           </div>
-         {% if loop.index is divisibleby 2 %}
+         {% if loop.index is divisibleby 3 %}
           </div> <div class="row"><br>
          {% endif %}
   {% endfor %}
   </div>
 {% endif %}  
 <br>
-<br>
-<a href="/index">Go Back to Busy Times Selector</a>
 
 </div>  <!-- container (for bootstrap) -->
 </body> 

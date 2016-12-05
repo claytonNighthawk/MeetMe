@@ -27,10 +27,15 @@ import calculate_free_times as cft
 import CONFIG
 import secrets.admin_secrets  # Per-machine secrets
 import secrets.client_secrets # Per-application secrets
-#  Note to CIS 322 students:  client_secrets is what you turn in.
-#     You need an admin_secrets, but the grader and I don't use yours. 
-#     We use our own admin_secrets file along with your client_secrets
-#     file on our Raspberry Pis. 
+from uuid import uuid4
+
+import pymongo
+from pymongo import MongoClient
+MONGO_CLIENT_URL = "mongodb://{}:{}@localhost:{}/{}".format(
+    secrets.client_secrets.db_user,
+    secrets.client_secrets.db_user_pw,
+    secrets.admin_secrets.port, 
+    secrets.client_secrets.db)
 
 app = flask.Flask(__name__)
 app.debug=CONFIG.DEBUG
@@ -40,6 +45,21 @@ app.secret_key=CONFIG.secret_key
 SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
 CLIENT_SECRET_FILE = secrets.admin_secrets.google_key_file  ## You'll need this
 APPLICATION_NAME = 'MeetMe class project'
+URL_BASE = 'localhost:5000/'    #for the time being
+BAD_HTML_CHARS = {" ": '%20', } #should be filled in more
+
+####
+# Database connection per server process
+###
+
+try: 
+    dbclient = MongoClient(MONGO_CLIENT_URL)
+    db = getattr(dbclient, secrets.client_secrets.db)
+    collection = db.dated
+
+except:
+    print("Failure opening database.  Is Mongo running? Correct password?")
+    sys.exit(1)
 
 ####
 #
@@ -56,7 +76,23 @@ def index():
         init_session_values()
     return render_template('index.html')
 
-@app.route("/choose")
+@app.route('/contribute/<id>')
+def contribute(id):
+    if 'begin_date' not in flask.session:
+        init_contribute_values(id)
+
+    flask.g.free_times = list(collection.find({"type": "free_time"}, {"session_id": id}))
+    return render_template('contribute.html')
+#button will be on contribute page that says add my events to collection: DONE
+#will redirect to /choose and an edited index.html: DONE 
+#will do all the usual stuff and redirect to the free times page: should already work
+
+#everyone will then be given a chance to pick a meeting time right there. 
+#will need to add a flad to the session to distinguish between contributing to and making a new event
+#should add a name field to keep traack of who has contributed and also make many of the interactions ajax 
+
+
+@app.route("/choose", methods=['GET', 'POST'])
 def choose():
     ## We'll need authorization to list calendars 
     ## I wanted to put what follows into a function, but had
@@ -73,23 +109,40 @@ def choose():
     flask.g.calendars = cft.list_calendars(gcal_service)
 
     if 'calendar_ids' in flask.session:
-        flask.session['events'] = cft.list_events(gcal_service, flask.session['calendar_ids'], flask.session['begin_date'], flask.session['end_date'], flask.session['daily_begin_time'], flask.session['daily_end_time'], flask.session['ignoreable_events'])   
-     
+        flask.g.events = cft.list_events(gcal_service, flask.session['calendar_ids'], flask.session['session_id'], flask.session['begin_date'], flask.session['end_date'], flask.session['daily_begin_time'], flask.session['daily_end_time'], flask.session['ignoreable_events'])   
+        flask.session['email'] = flask.g.events[0]['email']
+        print(flask.session['email'])
+        if len(flask.g.events) != 0:
+            collection.insert(flask.g.events)
+
     return render_template('index.html')
 
 @app.route('/get_free_times', methods=['POST'])
 def get_free_times():
-    """
-    Ideally I would like to not put all the events in the cookie
-    but I do not know how to get them from g since it goes away so quickly
-    and as a value on the button would require a lot of effort to get the button value  
-    back as a list of dicts since it is just a string on return
-    """
-    app.logger.debug('Redirecting to show free times page')
-    #events = request.form['get_free_times_button']     
-    events = flask.session['events']                                                                   
+    app.logger.debug('Redirecting to show free times page')  
+    events = list(collection.find({"type": "event", "session_id": flask.session['session_id']}))                                                                  
     busy_blocks = cft.get_busy_blocks(events, flask.session["daily_end_time"])               
-    flask.g.free_times = cft.calc_free_times(busy_blocks, flask.session['begin_date'], flask.session['end_date'], flask.session['daily_begin_time'], flask.session['daily_end_time'])
+    flask.g.free_times = cft.calc_free_times(busy_blocks, flask.session['session_id'], flask.session['contributing'], flask.session['begin_date'], flask.session['end_date'], flask.session['daily_begin_time'], flask.session['daily_end_time'])
+    collection.insert(flask.g.free_times)
+
+    if not flask.session['contributing']:
+        settings = {"type": "settings",
+                    "session_id": flask.session['session_id'],
+                    "emails": [flask.session['email']], #one element list to be added to by others
+                    "begin_date": flask.session['begin_date'], 
+                    "end_date": flask.session['end_date'], 
+                    "daily_begin_time": flask.session['daily_begin_time'], 
+                    "daily_end_time": flask.session['daily_end_time']
+                   }
+        if len(list(collection.find({"type": 'settings', "session_id": flask.session['session_id']}))) == 0:
+            collection.insert(settings) #could be done better with upsert but that requires a much newer version of
+                                        #pymongo/mongodb or a much different approach
+    else: 
+        collection.find_one_and_update({"type": 'settings', "session_id": flask.session['session_id']}, {'$addToSet': {'emails': flask.session['email']}}) #add the current user email to setttings['emails']
+
+    flask.g.message = html_escapify('Use this link to contribute to the meeting picker')
+    print(flask.g.message)
+    flask.g.linkback = URL_BASE + 'contribute/<' + flask.session['session_id'] + '>'
 
     return render_template('free_times.html')
 
@@ -138,7 +191,6 @@ def valid_credentials():
     if (credentials.invalid or credentials.access_token_expired):
         return None
     return credentials
-
 
 def get_gcal_service(credentials):
     """
@@ -221,7 +273,6 @@ def setrange():
     widget.
     """
     app.logger.debug("Entering setrange")  
-    #flask.flash("Setrange gave us '{}'".format(request.form.get('daterange')))
     daterange = request.form.get('daterange')
     flask.session['daterange'] = daterange
     timerange = [request.form.get('daily_begin_time'), request.form.get('daily_end_time')]
@@ -262,18 +313,40 @@ def init_session_values():
     now = arrow.now('local')     # We really should be using tz from browser
     tomorrow = now.replace(days=+1)
     nextweek = now.replace(days=+7)
+
     flask.session["begin_date"] = tomorrow.floor('day').isoformat()
     flask.session["end_date"] = nextweek.ceil('day').isoformat()
-    flask.session["daterange"] = "{} - {}".format(
-            tomorrow.format("MM/DD/YYYY"),
-            nextweek.format("MM/DD/YYYY"))
+    flask.session["daterange"] = "{} - {}".format(tomorrow.format("MM/DD/YYYY"), nextweek.format("MM/DD/YYYY"))
     # Default time span each day, 9 to 5
+
     flask.session["daily_begin_time"] = interpret_time("9am")
     flask.session["daily_end_time"] = interpret_time("5pm")
     flask.session['ignoreable_events'] = None
-    app.logger.debug(flask.session["daily_begin_time"])
-    app.logger.debug(flask.session["daily_end_time"])
-    app.logger.debug(flask.session["ignoreable_events"])
+    flask.session['session_id'] = str(uuid4().hex)[:16] # do not need all 32 characters at the moment
+    flask.session['contributing'] = False
+
+def init_contribute_values(id):
+    """
+    Start with some reasonable defaults for date and time ranges.
+    Note this must be run in app context ... can't call from main. 
+    """
+    app.logger.debug("initing contribute values")
+    settings = list(collection.find({"type": "settings"}, {"session_id": id}))[0]
+    app.logger.debug(settings)
+
+    # flask.session["begin_date"] = 
+    # flask.session["end_date"] = 
+    # flask.session["daterange"] = 
+
+    # flask.session["daily_begin_time"] = 
+    # flask.session["daily_end_time"] = 
+
+    flask.session['ignoreable_events'] = None
+    flask.session['session_id'] = id
+    flask.session['contributing'] = True
+    # app.logger.debug(flask.session["daily_begin_time"])
+    # app.logger.debug(flask.session["daily_end_time"])
+
 
 def interpret_time(text):
     """
@@ -320,6 +393,12 @@ def interpret_date(text):
 #  Functions (NOT pages) that return some information are in calculate_free_times.py
 #
 ####
+def html_escapify(text):
+    text = list(text)
+    for i in range(len(text)):
+        if text[i] in BAD_HTML_CHARS:
+            text[i] = BAD_HTML_CHARS[text[i]]
+    return ''.join(text)
 
 ####
 #

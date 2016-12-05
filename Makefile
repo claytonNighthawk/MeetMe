@@ -1,5 +1,5 @@
 #
-#  Project 7: Pull Google calendar events 
+#  Project 789: Pull Google calendar events 
 
 
 # ###########################################
@@ -52,6 +52,7 @@ INVENV = . env/bin/activate ;
 #  with debugging turned on unless it is unset in CONFIG.py
 # 
 run:	env
+	($(INVENV) python3 create_db.py) ||  true
 	($(INVENV) python3 flask_main.py) ||  true
 
 # 'make service' runs as a background job under the gunicorn 
@@ -82,6 +83,10 @@ test:	env
 dist:	env
 	$(INVENV) pip freeze >requirements.txt
 
+## destroys database if necessary
+destroy:	env
+	($(INVENV) python3 destroy_db.py) ||  true
+
 
 # 'clean' and 'veryclean' are typically used before checking 
 # things into git.  'clean' should leave the project ready to 
@@ -91,6 +96,7 @@ dist:	env
 clean:
 	rm -f *.pyc
 	rm -rf __pycache__
+	($(INVENV) python3 destroy_db.py) ||  true
 
 veryclean:
 	make clean
