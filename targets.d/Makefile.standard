@@ -4,5 +4,5 @@
 #  FIXME:  Ideally we should test this in the script, and use pyvenv if it
 #          exists or a pyvenv-3.* if only version-specific pyvenvs exist. 
 #
-PYVENV = virtualenv
+PYVENV = pyvenv
 
