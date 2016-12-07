@@ -46,7 +46,6 @@ SCOPES = 'https://www.googleapis.com/auth/calendar.readonly'
 CLIENT_SECRET_FILE = secrets.admin_secrets.google_key_file  ## You'll need this
 APPLICATION_NAME = 'MeetMe class project'
 
-URL_BASE = 'localhost:5000/'    #for the time being
 BAD_URL_CHARS = {" ": '%20', } #should be filled in more
 
 ####
@@ -164,7 +163,7 @@ def get_free_times():
                                                     #add the current user email to setttings['emails']
 
     flask.g.message = 'Use this link to contribute to the meeting picker'
-    flask.g.linkback = URL_BASE + 'contribute/' + flask.session['session_id']
+    flask.g.partialLinkback = '/contribute/' + flask.session['session_id']
 
     return render_template('free_times.html')
 
