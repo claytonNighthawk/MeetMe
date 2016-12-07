@@ -46,8 +46,12 @@
   &lt;drop down with possible ending times every 15 minutes until the free time block ends&gt; 
   <!-- drop down with possible ending times every 15 minutes for 3 hours or until the free time block ends -->
 {% else %}
-  contribute linkback = {{ g.linkback }}<br> 
-  <a href="mailto:?Subject=Meeting%20Time%3F&body={{ g.message |url_escapify }}%20{{ g.linkback|url_escapify }}" target="_top">Send Mail with contribute link instead</a>
+  contribute linkback =
+<script>
+    document.write(window.location.host + {{ g.partialLinkback }}); 
+</script>
+<!--   contribute linkback = {{ g.partialLinkback }}<br>  -->
+  <a href="mailto:?Subject=Meeting%20Time%3F&body={{ g.message |url_escapify }}%20{{ g.partialLinkback|url_escapify }}" target="_top">Send Mail with contribute link instead</a>
 {% endif %}
 <br>
 <br>
