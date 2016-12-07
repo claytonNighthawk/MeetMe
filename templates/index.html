@@ -38,8 +38,8 @@
 <h1>Busy times</h1>
 
 <h2>Date range</h2>
-  <form action="/setrange" method="post">
-  <input type="text" name="daterange" size="12" style="width: 12em"
+  <form action="/setrange" method="post" id='setrange'>
+  <input type="text" name="daterange" id="daterange" size="12" style="width: 12em"
     {% if session.daterange is defined %}
          value="{{session.daterange}}"
     {% endif %}
@@ -66,23 +66,24 @@
   <br>
 
   <h4>Time range</h4>
-  <input type="time" name="daily_begin_time"  {% if session.daily_begin_time is defined %}
-                                                value="{{session.daily_begin_time}}"
-                                              {% endif %}
+  <input type="time" name="daily_begin_time" id="daily_begin_time"  
+  {% if session.daily_begin_time is defined %}
+    value="{{session.daily_begin_time}}"
+  {% endif %}
   >
   to
-  <input type="time" name="daily_end_time"  {% if session.daily_end_time is defined %}
-                                              value="{{session.daily_end_time}}"
-                                            {% endif %}>
+  <input type="time" name="daily_end_time" id="daily_end_time"   
+  {% if session.daily_end_time is defined %}
+    value="{{session.daily_end_time}}"
+  {% endif %}>
   <br>
-  <input type="submit" value="Choose">
+  <input type="submit" value="Choose" id='choose'>
 </form>
 
-{% if session.contributing %}
+{% if session.contributing == true %}
   <script>
-    $('#daterange').prop('readyonly', true);
-    $('#daily_begin_time').prop('readyonly', true);
-    $('#daily_end_time').prop('readyonly', true);
+    $('#setrange :input').attr('readonly','readonly');
+    $('input[type="submit"]').prop('disabled', true);
   </script>
 {% endif %}
 
@@ -108,13 +109,13 @@
     </div>
     <input type=submit value="Use selected calendars">
   </form>
+{% endif %}
+  
+{% if g.events is defined  %}
   <form action='/get_free_times' method="post">
     <button type=submit name='get_free_times_button' value="{{ g.events }}"> Get Free Times </button>
   </form>
-{% endif %}
-<br>
-  
-{% if g.events is defined  %}
+  <br>
 <form action='/ignore_unimportant_events' method="post">
   <div class="row">
   {% for event in g.events %}

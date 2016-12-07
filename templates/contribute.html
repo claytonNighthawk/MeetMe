@@ -1,6 +1,6 @@
 <!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
 <html lang="en"> <head>
-<title>Free Times</title>
+<title>Contribute</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
 <link rel="stylesheet" type="text/css"
@@ -31,36 +31,31 @@
 <body>
 <div class="container">
 
-<h1>Free times</h1>
-<!-- <script>
-    document.write('<a href="' + document.referrer + '">Go Back to Busy Times Selector</a>'); 
-    //keeps the information on the screen as it was before they left it
-</script>
-<br> -->
+<h2>Contribute to Group Free Times</h2>
 
-{% if session.contributing %}
-  <h4>Choose Meeting Time and Length</h4>
-    &lt;drop down with free_time start times&gt;
-  <!-- drop down with free_time start times -->
-   to 
-  &lt;drop down with possible ending times every 15 minutes until the free time block ends&gt; 
-  <!-- drop down with possible ending times every 15 minutes for 3 hours or until the free time block ends -->
-{% else %}
-  contribute linkback = {{ g.linkback }}<br> 
-  <a href="mailto:?Subject=Meeting%20Time%3F&body={{ g.message |url_escapify }}%20{{ g.linkback|url_escapify }}" target="_top">Send Mail with contribute link instead</a>
-{% endif %}
-<br>
-<br>
+<h4>Current Date &amp; Time range</h4>
+  <input type="text" name="daterange" size="12" style="width: 12em" value="{{session.daterange}}" readonly>
+  <br>
+  <input type="time" name="daily_begin_time" value="{{session.daily_begin_time}}" readonly>
+  to
+  <input type="time" name="daily_end_time" value="{{session.daily_end_time}}" readonly>
+  <br>
+  <br>
 
+<form action='/choose' method="post">
+    <button type=submit name='contribute_calendar_button'>Contribute Calendar</button>
+</form>
+
+<h5>Free Times</h5>
 {% if g.free_times is defined  %}
   <div class="row">
   {% for event in g.free_times %}
     <div class="col-md-8">
       {{event.dateTime_start | fmtdate}}, {{event.dateTime_start | fmttime}} - {{event.dateTime_end | fmttime}} 
-          </div>
-         {% if loop.index is divisibleby 3 %}
-          </div> <div class="row"><br>
-         {% endif %}
+        </div>
+       {% if loop.index is divisibleby 3 %}
+        </div> <div class="row"><br>
+       {% endif %}
   {% endfor %}
   </div>
 {% endif %}  

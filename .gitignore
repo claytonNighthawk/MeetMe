@@ -6,6 +6,7 @@ node_modules
 static/js/*.min.js
 .goog_app_key.json
 *~
+*.local
 
 
 # Byte-compiled / optimized / DLL files
