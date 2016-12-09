@@ -71,19 +71,14 @@ except:
 @app.route("/index")
 def index():
     app.logger.debug("Entering index")
-    if True:
-    # if 'begin_date' not in flask.session:
-        init_session_values()
+    init_session_values()
     return render_template('index.html')
 
 @app.route('/contribute/<id>')
 def contribute(id):
-    if True:
-    # if 'begin_date' not in flask.session:
-        init_contribute_values(id)
-
+    init_contribute_values(id)
     busy_blocks = list(collection.find({"type": "busy_block", "session_id": flask.session['session_id']})) 
-    flask.g.free_times = cft.calc_free_times(busy_blocks, flask.session['session_id'], flask.session['contributing'], flask.session['begin_date'], flask.session['end_date'], flask.session['daily_begin_time'], flask.session['daily_end_time'])
+    flask.g.free_times = cft.calc_free_times(busy_blocks, flask.session['session_id'], flask.session['begin_date'], flask.session['end_date'], flask.session['daily_begin_time'], flask.session['daily_end_time'])
     return render_template('contribute.html')
 
 @app.route("/choose", methods=['GET', 'POST'])
@@ -140,8 +135,8 @@ def get_free_times():
                                                     {'$addToSet': {'emails': flask.session['email']}}) 
                                                     #add the current user email to setttings['emails']
 
-    flask.g.emails = list(collection.find({"type": 'settings', "session_id": flask.session['session_id'], }))[0]['emails']
-    flask.g.emails = ", ".join(flask.g.emails) # to get rid of the square brackets
+    emails = list(collection.find({"type": 'settings', "session_id": flask.session['session_id'], }))[0]['emails']
+    flask.g.emails = ", ".join(emails) # to get rid of the square brackets
     flask.g.message = 'Use this link to contribute to the meeting picker'
     flask.g.partialLinkback = '/contribute/' + flask.session['session_id']
 
@@ -415,7 +410,7 @@ def format_arrow_date(date):
 def format_arrow_time(time):
     try:
         normal = arrow.get(str(time), 'HH:mm:ss')
-        return normal.format("HH:mm")
+        return normal.format("hh:mma")
     except Exception as e:
         app.logger.debug(e)
         return "(bad time)"

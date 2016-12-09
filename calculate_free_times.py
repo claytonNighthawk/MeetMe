@@ -134,8 +134,9 @@ def event_sort_key(event):
 def get_busy_blocks(event_list, sesh_daily_end_time): 
     print('Entering cft.get_busy_blocks')
     if len(event_list) < 2:
-        event_list[0]['type'] = 'busy_block'
-        print('len(event_list) < 2, returning events')
+        # print('len(event_list) = {}, returning events'.format(len(event_list)))
+        if len(event_list) != 0:
+            event_list[0]['type'] = 'busy_block'
         return event_list
     events = []
     for i in range(len(event_list)):    #creates list of non overlapping events
@@ -153,9 +154,11 @@ def get_busy_blocks(event_list, sesh_daily_end_time):
     #     print(event)
     # print()
 
+
     if len(events) < 2:
-        events[0]['type'] = 'busy_block'
-        print('len(events) < 2, returning events')
+        # print('len(events) < 2, returning events')
+        if len(events) !=0:
+            events[0]['type'] = 'busy_block'
         return events
 
     busy_blocks = []

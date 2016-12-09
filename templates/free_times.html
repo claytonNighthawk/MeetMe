@@ -50,13 +50,12 @@
                 var option = document.createElement("option");
                 option.text = difference + " minutes";
                 length_dropdown.add(option);
-            }
-            
+            }  
         });
     });
   </script> 
   <br>
-  Users that have contributed: {{ g.emails }}
+  Group members that have contributed their calendar(s): {{ g.emails }}
   <br>
   <p id="final_meeting_time"></p>
   <p id="email_p"></p>
@@ -65,17 +64,20 @@
   <script >
   function dumpPullDowns() {
     var dateTime_start = moment($('#dateTime_start').val().split(" ")[0]);
-    document.getElementById("final_meeting_time").innerHTML = "Finalized Meeting Time: " + dateTime_start.format("ddd MM/DD/YYYY") + " starting at " + dateTime_start.format("HH:mm") + " for " + $('#length').val();
-    document.getElementById("email_p").innerHTML = "Email please email the time and date to everyone who has contributed";
+    var final_time_txt = dateTime_start.format("ddd MM/DD/YYYY") + " starting at " + dateTime_start.format("hh:mma") + " for " + $('#length').val();
+    document.getElementById("final_meeting_time").innerHTML = "Finalized Meeting Time: " + final_time_txt;
+    document.getElementById("email_p").innerHTML = "Please email the time and date to everyone who has contributed.";
   }
   </script>
-
 
 {% else %}
   <script>
     document.getElementById("title").innerHTML = "Free Times";
     document.write('<a href="' + window.location.host + "{{ g.partialLinkback }}" + '"target="_blank">Contribute Linkback</a>');
   </script>
+  Please click and follow the link or right click and copy link address to send to group members.
+  <br> 
+  Or 
   <br>
   <a href="mailto:?Subject=Meeting%20Time%3F&body={{ g.message |url_escapify }}%20{{ g.partialLinkback|url_escapify }}" target="_top">Send Mail with contribute link instead</a>
 {% endif %}
