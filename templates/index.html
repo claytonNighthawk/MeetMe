@@ -35,7 +35,7 @@
 <body>
 <div class="container">
 
-<h1>Busy times</h1>
+<h1>Personal Busy times</h1>
 
 <h2>Date range</h2>
   <form action="/setrange" method="post" id='setrange'>
@@ -101,10 +101,10 @@
   {% for cal in g.calendars if cal.selected %}
     <div class="col-md-4">
 	   <input type="checkbox" value="{{ cal.id }}" name='to_read'> {{ cal.summary }}
-          </div>
-         {% if loop.index is divisibleby 3 %}
-          </div> <div class="row">
-         {% endif %}
+        </div>
+       {% if loop.index is divisibleby 3 %}
+        </div> <div class="row">
+       {% endif %}
   {% endfor %}
     </div>
     <input type=submit value="Use selected calendars">

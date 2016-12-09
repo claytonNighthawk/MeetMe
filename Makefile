@@ -52,11 +52,11 @@ INVENV = . env/bin/activate ;
 #  with debugging turned on unless it is unset in CONFIG.py
 # 
 run:    env  database_exists
-        ($(INVENV) python3 flask_main.py) ||  true
+		($(INVENV) python3 flask_main.py) ||  true
 
 database_exists: 
-        ($(INVENV) python3 create_db.py)
-        touch database_exists   # We're using its existence as a flag
+		($(INVENV) python3 create_db.py)
+		touch database_exists   # We're using its existence as a flag
 
 # 'make service' runs as a background job under the gunicorn 
 #  WSGI server. FIXME:  A real production service would use 
@@ -89,7 +89,7 @@ dist:	env
 ## destroys database if necessary
 destroy: 
 	($(INVENV)  python3 destroy_db.py) || true
-	rm database_exists
+	rm -f database_exists
 
 
 # 'clean' and 'veryclean' are typically used before checking 
@@ -100,7 +100,7 @@ destroy:
 clean:
 	rm -f *.pyc
 	rm -rf __pycache__
-	env destroy
+	make destroy
 
 veryclean:
 	make clean

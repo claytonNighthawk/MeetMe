@@ -134,9 +134,8 @@ def event_sort_key(event):
 def get_busy_blocks(event_list, sesh_daily_end_time): 
     print('Entering cft.get_busy_blocks')
     if len(event_list) < 2:
-        print(event_list)
         event_list[0]['type'] = 'busy_block'
-        # print('len(events) < 2, returning events')
+        print('len(event_list) < 2, returning events')
         return event_list
     events = []
     for i in range(len(event_list)):    #creates list of non overlapping events
@@ -154,6 +153,11 @@ def get_busy_blocks(event_list, sesh_daily_end_time):
     #     print(event)
     # print()
 
+    if len(events) < 2:
+        events[0]['type'] = 'busy_block'
+        print('len(events) < 2, returning events')
+        return events
+
     busy_blocks = []
     for i in range(len(events)-1):      #combines events into busy blocks
         events[i]['type'] = 'busy_block'
@@ -165,12 +169,13 @@ def get_busy_blocks(event_list, sesh_daily_end_time):
             # print("comparing '{0}' to '{1}', extending '{1}' to {2}-{3}\n".format(events[i]['summary'], events[i+1]['summary'], arrow.get(events[i+1]['dateTime_start']).time(), arrow.get(events[i+1]['dateTime_end']).time()))
         else:
             if str(endi0.time()) > sesh_daily_end_time:
-                events[i]['dateTime_end'] = normalize_ending_time(events[i], sesh_daily_end_time)                  
+                events[i]['dateTime_end'] = normalize_ending_time(events[i], sesh_daily_end_time)
             # print("appending '{}'".format(events[i]['summary']))
             busy_blocks.append(events[i])
 
     if str(arrow.get(events[-1]['dateTime_end']).time()) > sesh_daily_end_time:
-        events[-1]['dateTime_end'] = normalize_ending_time(events[-1], sesh_daily_end_time)   
+        events[-1]['dateTime_end'] = normalize_ending_time(events[-1], sesh_daily_end_time)
+    events[-1]['type'] = 'busy_block'    
     # print("appending '{}'".format(events[-1]['summary']))       
     busy_blocks.append(events[-1])
 
@@ -181,7 +186,7 @@ def get_busy_blocks(event_list, sesh_daily_end_time):
 
     return busy_blocks
 
-def calc_free_times(busy_blocks, sesh_id, sesh_contributing, sesh_begin_date, sesh_end_date, sesh_daily_begin_time, sesh_daily_end_time):
+def calc_free_times(busy_blocks, sesh_id, sesh_begin_date, sesh_end_date, sesh_daily_begin_time, sesh_daily_end_time):
     print('Entering cft.calc_free_times')
     begin_date = arrow.get(sesh_begin_date)
     end_date = arrow.get(sesh_end_date)

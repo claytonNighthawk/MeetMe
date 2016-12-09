@@ -85,25 +85,6 @@ def contribute(id):
     busy_blocks = list(collection.find({"type": "busy_block", "session_id": flask.session['session_id']})) 
     flask.g.free_times = cft.calc_free_times(busy_blocks, flask.session['session_id'], flask.session['contributing'], flask.session['begin_date'], flask.session['end_date'], flask.session['daily_begin_time'], flask.session['daily_end_time'])
     return render_template('contribute.html')
-#button will be on contribute page that says add my events to collection: DONE
-#will redirect to /choose and an edited index.html: DONE 
-#will do all the usual stuff and redirect to the free times page: should already work
-
-#everyone will then be given a chance to pick a meeting time right there. 
-#will need to add a flad to the session to distinguish between contributing to and making a new event. DONE but probably needs debuging
-#should add a name field to keep traack of who has contributed and also make many of the interactions ajax
-#name should be taken care of by email address 
-
-#there is something going wrong when calculating the new free times. 
-# Fri 12/09/2016, 11:00 - 15:00    ->   Fri 12/09/2016, 11:00 - 15:00 
-# Fri 12/09/2016, 16:00 - 17:00    ->   Fri 12/09/2016, 13:00 - 17:00
-
-# for a 1 hour event from 12-13. this should be:
-
-# Fri 12/09/2016, 11:00 - 15:00    ->   Fri 12/09/2016, 11:00 - 12:00
-#                                  ->   Fri 12/09/2016, 13:00 - 15:00
-# Fri 12/09/2016, 16:00 - 17:00    ->   Fri 12/09/2016, 16:00 - 17:00
-
 
 @app.route("/choose", methods=['GET', 'POST'])
 def choose():
@@ -123,9 +104,9 @@ def choose():
 
     if 'calendar_ids' in flask.session:
         flask.g.events = cft.list_events(gcal_service, flask.session['calendar_ids'], flask.session['session_id'], flask.session['begin_date'], flask.session['end_date'], flask.session['daily_begin_time'], flask.session['daily_end_time'], flask.session['ignoreable_events'])   
-        flask.session['email'] = flask.g.events[0]['email']
-        # print(flask.session['email'])
+
         if len(flask.g.events) != 0:
+            flask.session['email'] = flask.g.events[0]['email']
             collection.insert_many(flask.g.events)
 
     return render_template('index.html')
@@ -133,17 +114,14 @@ def choose():
 @app.route('/get_free_times', methods=['POST'])
 def get_free_times():
     app.logger.debug('Redirecting to show free times page')
-    # events = flask.g.events    
     events = list(collection.find({"type": "event", "session_id": flask.session['session_id']}).sort("dateTime_start"))
-
-    for event in events:
-        print(event)
 
     busy_blocks = cft.get_busy_blocks(events, flask.session["daily_end_time"])
     for block in busy_blocks: 
-        collection.replace_one({'_id': block['_id']}, block)             
-    flask.g.free_times = cft.calc_free_times(busy_blocks, flask.session['session_id'], flask.session['contributing'], flask.session['begin_date'], flask.session['end_date'], flask.session['daily_begin_time'], flask.session['daily_end_time'])
-    #collection.insert_many(flask.g.free_times)
+        collection.replace_one({'_id': block['_id']}, block)
+    busy_blocks = list(collection.find({"type": "busy_block", "session_id": flask.session['session_id']}).sort("dateTime_start"))          
+
+    flask.g.free_times = cft.calc_free_times(busy_blocks, flask.session['session_id'], flask.session['begin_date'], flask.session['end_date'], flask.session['daily_begin_time'], flask.session['daily_end_time'])
 
     if not flask.session['contributing']:
         settings = {"type": "settings",
@@ -162,6 +140,8 @@ def get_free_times():
                                                     {'$addToSet': {'emails': flask.session['email']}}) 
                                                     #add the current user email to setttings['emails']
 
+    flask.g.emails = list(collection.find({"type": 'settings', "session_id": flask.session['session_id'], }))[0]['emails']
+    flask.g.emails = ", ".join(flask.g.emails) # to get rid of the square brackets
     flask.g.message = 'Use this link to contribute to the meeting picker'
     flask.g.partialLinkback = '/contribute/' + flask.session['session_id']
 
@@ -342,6 +322,8 @@ def init_session_values():
 
     flask.session["daily_begin_time"] = interpret_time("9am")
     flask.session["daily_end_time"] = interpret_time("5pm")
+    if 'calendar_ids' in flask.session:
+        flask.session.pop('calendar_ids')
 
     flask.session['ignoreable_events'] = None
     flask.session['session_id'] = str(uuid4().hex)[:16] # do not need all 32 characters at the moment
@@ -362,6 +344,8 @@ def init_contribute_values(id):
 
     flask.session["daily_begin_time"] = settings['daily_begin_time']
     flask.session["daily_end_time"] = settings['daily_end_time']
+    if 'calendar_ids' in flask.session:
+        flask.session.pop('calendar_ids')
 
     flask.session['ignoreable_events'] = None
     flask.session['session_id'] = id
@@ -374,12 +358,12 @@ def interpret_time(text):
     May throw exception if time can't be interpreted. In that
     case it will also flash a message explaining accepted formats.
     """
-    app.logger.debug("Decoding time '{}'".format(text))
+    # app.logger.debug("Decoding time '{}'".format(text))
     time_formats = ["ha", "h:mma",  "h:mm a", "H:mm"]
     try: 
         as_arrow = arrow.get(text, time_formats).replace(tzinfo='local')
         as_arrow = as_arrow.replace(year=2016) #HACK see below
-        app.logger.debug("Succeeded interpreting time")
+        # app.logger.debug("Succeeded interpreting time")
     except:
         app.logger.debug("Failed to interpret time")
         flask.flash("Time '{}' didn't match accepted formats 13:30 or 1:30pm".format(text))
