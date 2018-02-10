@@ -1,4 +1,4 @@
-# proj789-Gcal
+# MeetMe
 Snarf appointment data from a selection of a user's Google calendars 
 
 ## What is here
